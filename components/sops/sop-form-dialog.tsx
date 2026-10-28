@@ -17,13 +17,15 @@ interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
   sop?: Sop | null
+  /** Pre-selects the stream when adding from a stream page. */
+  defaultStreamId?: string
 }
 
-export function SopFormDialog({ open, onOpenChange, sop }: Props) {
+export function SopFormDialog({ open, onOpenChange, sop, defaultStreamId }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-        <SopForm key={sop?.id ?? 'new'} sop={sop} onDone={() => onOpenChange(false)} />
+        <SopForm key={sop?.id ?? 'new'} sop={sop} defaultStreamId={defaultStreamId} onDone={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
   )
@@ -38,13 +40,13 @@ function suggestCode(existing: string[]) {
   return `SOP-${String(max + 1).padStart(3, '0')}`
 }
 
-function SopForm({ sop, onDone }: { sop?: Sop | null; onDone: () => void }) {
+function SopForm({ sop, defaultStreamId, onDone }: { sop?: Sop | null; defaultStreamId?: string; onDone: () => void }) {
   const data = useData()
   const commit = useCommit()
   const statuses = useMemo(() => sortedStatuses(data), [data])
   const initialWs = sop ? data.workstreams.find((w) => w.id === sop.workstreamId) : undefined
 
-  const [streamId, setStreamId] = useState(initialWs?.streamId ?? '')
+  const [streamId, setStreamId] = useState(initialWs?.streamId ?? defaultStreamId ?? '')
   const [form, setForm] = useState<SopInput>(() => ({
     code: sop?.code ?? suggestCode(data.sops.map((s) => s.code)),
     name: sop?.name ?? '',

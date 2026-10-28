@@ -36,12 +36,14 @@ const sortValue: Record<SortKey, (r: SopRow) => string | number> = {
   updatedAt: (r) => r.updatedAt,
 }
 
-export function SopsView({ openNew = false }: { openNew?: boolean }) {
+/** With `streamId` the table is locked to that stream and renders without its own page header. */
+export function SopsView({ openNew = false, streamId }: { openNew?: boolean; streamId?: string }) {
   const data = useData()
   const commit = useCommit()
   const router = useRouter()
   const statuses = useMemo(() => sortedStatuses(data), [data])
-  const allRows = useMemo(() => buildSopRows(data), [data])
+  const allRows = useMemo(() => buildSopRows(data).filter((r) => !streamId || r.stream?.id === streamId), [data, streamId])
+  const scopedWorkstreams = streamId ? data.workstreams.filter((w) => w.streamId === streamId) : data.workstreams
 
   const [query, setQuery] = useState('')
   const [streamF, setStreamF] = useState(ALL)
@@ -55,7 +57,7 @@ export function SopsView({ openNew = false }: { openNew?: boolean }) {
   const [deleting, setDeleting] = useState<Sop | null>(null)
 
   const exists = (id: string, list: { id: string }[]) => id === ALL || list.some((x) => x.id === id)
-  const stream = exists(streamF, data.streams) ? streamF : ALL
+  const stream = streamId ?? (exists(streamF, data.streams) ? streamF : ALL)
   const wsList = data.workstreams.filter((w) => stream === ALL || w.streamId === stream)
   const ws = exists(wsF, wsList) ? wsF : ALL
   const status = exists(statusF, data.statuses) ? statusF : ALL
@@ -82,7 +84,7 @@ export function SopsView({ openNew = false }: { openNew?: boolean }) {
   const currentPage = Math.min(page, pageCount)
   const pageRows = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
   const today = toDateInput(new Date())
-  const hasFilters = query || stream !== ALL || ws !== ALL || status !== ALL || priorityF !== ALL
+  const hasFilters = query || (!streamId && stream !== ALL) || ws !== ALL || status !== ALL || priorityF !== ALL
 
   function resetPage<T>(setter: (v: T) => void) {
     return (v: T) => {
@@ -124,25 +126,34 @@ export function SopsView({ openNew = false }: { openNew?: boolean }) {
 
   return (
     <>
-      <PageHeader
-        title="SOP Management"
-        description="Create, track and update every Standard Operating Procedure in the program."
-        actions={
+      {(() => {
+        const actions = (
           <>
             <Button variant="outline" onClick={exportCsv} disabled={filtered.length === 0}>
               <Download data-icon="inline-start" />
               Export CSV
             </Button>
-            <Button onClick={() => openForm(null)} disabled={data.workstreams.length === 0}>
+            <Button onClick={() => openForm(null)} disabled={scopedWorkstreams.length === 0}>
               <Plus data-icon="inline-start" />
               Add SOP
             </Button>
           </>
-        }
-      />
+        )
+        return streamId ? (
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold tracking-tight text-foreground">SOPs</h2>
+            <div className="flex flex-wrap items-center gap-2">{actions}</div>
+          </div>
+        ) : (
+          <PageHeader title="SOP Management" description="Create, track and update every Standard Operating Procedure in the program." actions={actions} />
+        )
+      })()}
 
-      {data.workstreams.length === 0 ? (
-        <EmptyState title="No workstreams yet" description="SOPs belong to a workstream. Create a stream and workstream before adding SOPs." />
+      {scopedWorkstreams.length === 0 ? (
+        <EmptyState
+          title="No workstreams yet"
+          description={streamId ? 'SOPs belong to a workstream. Add a workstream to this stream before adding SOPs.' : 'SOPs belong to a workstream. Create a stream and workstream before adding SOPs.'}
+        />
       ) : (
         <Card className="gap-0 py-0">
           <CardContent className="flex flex-col gap-3 border-b p-4">
@@ -152,16 +163,18 @@ export function SopsView({ openNew = false }: { openNew?: boolean }) {
                 <Input value={query} onChange={(e) => resetPage(setQuery)(e.target.value)} placeholder="Search by ID, name, owner, stream…" className="pl-8" aria-label="Search SOPs" />
               </div>
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:flex">
-                <OptionSelect
-                  className="lg:w-44"
-                  aria-label="Filter by stream"
-                  value={stream}
-                  onChange={(v) => {
-                    resetPage(setStreamF)(v || ALL)
-                    setWsF(ALL)
-                  }}
-                  options={[{ value: ALL, label: 'All streams' }, ...data.streams.map((s) => ({ value: s.id, label: s.name }))]}
-                />
+                {!streamId && (
+                  <OptionSelect
+                    className="lg:w-44"
+                    aria-label="Filter by stream"
+                    value={stream}
+                    onChange={(v) => {
+                      resetPage(setStreamF)(v || ALL)
+                      setWsF(ALL)
+                    }}
+                    options={[{ value: ALL, label: 'All streams' }, ...data.streams.map((s) => ({ value: s.id, label: s.name }))]}
+                  />
+                )}
                 <OptionSelect
                   className="lg:w-44"
                   aria-label="Filter by workstream"
@@ -214,7 +227,7 @@ export function SopsView({ openNew = false }: { openNew?: boolean }) {
               <TableRow>
                 <SortHead k="code" className="pl-4">SOP ID</SortHead>
                 <SortHead k="name">SOP Name</SortHead>
-                <SortHead k="stream" className="hidden xl:table-cell">Stream</SortHead>
+                {!streamId && <SortHead k="stream" className="hidden xl:table-cell">Stream</SortHead>}
                 <SortHead k="workstream" className="hidden lg:table-cell">Workstream</SortHead>
                 <SortHead k="owner" className="hidden md:table-cell">PIC / Owner</SortHead>
                 <SortHead k="status">Status</SortHead>
@@ -245,7 +258,7 @@ export function SopsView({ openNew = false }: { openNew?: boolean }) {
                       </span>
                       <span className="block max-w-64 truncate text-xs text-muted-foreground lg:hidden">{r.workstream?.name}</span>
                     </TableCell>
-                    <TableCell className="hidden text-muted-foreground xl:table-cell">{r.stream?.name}</TableCell>
+                    {!streamId && <TableCell className="hidden text-muted-foreground xl:table-cell">{r.stream?.name}</TableCell>}
                     <TableCell className="hidden text-muted-foreground lg:table-cell">{r.workstream?.name}</TableCell>
                     <TableCell className="hidden md:table-cell">{r.owner}</TableCell>
                     <TableCell>
@@ -295,7 +308,7 @@ export function SopsView({ openNew = false }: { openNew?: boolean }) {
         </Card>
       )}
 
-      <SopFormDialog open={formOpen} onOpenChange={handleFormOpenChange} sop={editing} />
+      <SopFormDialog open={formOpen} onOpenChange={handleFormOpenChange} sop={editing} defaultStreamId={streamId} />
       <ConfirmDialog
         open={!!deleting}
         onOpenChange={(o) => !o && setDeleting(null)}

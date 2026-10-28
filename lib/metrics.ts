@@ -69,6 +69,18 @@ export function getProgramMetrics(data: AppData, today = new Date()): ProgramMet
   return m
 }
 
+/** Narrows the data to one stream so the program-level metrics can be reused per stream. */
+export function scopeToStream(data: AppData, streamId: ID): AppData {
+  const workstreams = data.workstreams.filter((w) => w.streamId === streamId)
+  const wsIds = new Set(workstreams.map((w) => w.id))
+  return {
+    ...data,
+    streams: data.streams.filter((s) => s.id === streamId),
+    workstreams,
+    sops: data.sops.filter((s) => wsIds.has(s.workstreamId)),
+  }
+}
+
 export interface GroupStats {
   workstreamCount: number
   sopCount: number
