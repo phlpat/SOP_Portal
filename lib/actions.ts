@@ -54,6 +54,18 @@ export function deleteStream(data: AppData, id: ID): ActionResult {
   )
 }
 
+/** Stream order is the array order, so the sidebar and dashboard follow it automatically. */
+export function moveStream(data: AppData, id: ID, toIndex: number): ActionResult {
+  const from = data.streams.findIndex((s) => s.id === id)
+  if (from === -1) return fail('Stream not found.')
+  const to = Math.max(0, Math.min(toIndex, data.streams.length - 1))
+  if (to === from) return fail('Stream is already in that position.')
+  const streams = [...data.streams]
+  const [moved] = streams.splice(from, 1)
+  streams.splice(to, 0, moved)
+  return ok({ ...data, streams }, `Moved "${moved.name}" to position ${to + 1}.`)
+}
+
 /* ---------- Workstreams ---------- */
 
 export interface WorkstreamInput {

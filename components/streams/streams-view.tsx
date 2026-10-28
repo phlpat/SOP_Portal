@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, GripVertical, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useCommit, useData } from '@/components/data-provider'
 import { PageHeader, EmptyState } from '@/components/shared/page-header'
 import { ProgressBar } from '@/components/shared/badges'
@@ -9,7 +9,7 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardAction } from '@/components/ui/card'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { deleteStream } from '@/lib/actions'
+import { deleteStream, moveStream } from '@/lib/actions'
 import { getStreamStats } from '@/lib/metrics'
 import type { Stream } from '@/lib/types'
 import { StreamFormDialog } from './stream-form-dialog'
@@ -22,13 +22,26 @@ export function StreamsView() {
   const [editing, setEditing] = useState<Stream | null>(null)
   const [deleting, setDeleting] = useState<Stream | null>(null)
 
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [overId, setOverId] = useState<string | null>(null)
+
   const deletingStats = deleting ? stats.get(deleting.id) : undefined
+
+  function moveTo(id: string, index: number) {
+    if (index < 0 || index >= data.streams.length || data.streams[index].id === id) return
+    commit((d) => moveStream(d, id, index))
+  }
+
+  function endDrag() {
+    setDragId(null)
+    setOverId(null)
+  }
 
   return (
     <>
       <PageHeader
         title="Stream Management"
-        description="Create and maintain the program streams. Changes flow to the dashboard, filters and forms instantly."
+        description="Create and maintain the program streams. Drag a card to change the order; it applies to the sidebar and dashboard too."
         actions={
           <Button
             onClick={() => {
@@ -55,12 +68,36 @@ export function StreamsView() {
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {data.streams.map((stream) => {
+          {data.streams.map((stream, index) => {
             const s = stats.get(stream.id)!
             return (
-              <Card key={stream.id}>
+              <Card
+                key={stream.id}
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.effectAllowed = 'move'
+                  e.dataTransfer.setData('text/plain', stream.id)
+                  setDragId(stream.id)
+                }}
+                onDragOver={(e) => {
+                  if (!dragId) return
+                  e.preventDefault()
+                  e.dataTransfer.dropEffect = 'move'
+                  if (overId !== stream.id) setOverId(stream.id)
+                }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  if (dragId) moveTo(dragId, index)
+                  endDrag()
+                }}
+                onDragEnd={endDrag}
+                className={`transition-opacity ${dragId === stream.id ? 'opacity-40' : ''} ${dragId && overId === stream.id && dragId !== stream.id ? 'ring-2 ring-primary' : ''}`}
+              >
                 <CardHeader>
-                  <CardTitle className="text-base">{stream.name}</CardTitle>
+                  <CardTitle className="flex items-center gap-1.5 text-base">
+                    <GripVertical className="-ml-1 size-4 shrink-0 cursor-grab text-muted-foreground active:cursor-grabbing" aria-hidden="true" />
+                    <span className="min-w-0 truncate">{stream.name}</span>
+                  </CardTitle>
                   <CardDescription className="line-clamp-2 min-h-10">{stream.description || 'No description provided.'}</CardDescription>
                   <CardAction>
                     <DropdownMenu>
@@ -76,6 +113,15 @@ export function StreamsView() {
                         >
                           <Pencil />
                           Edit
+                        </DropdownMenuItem>
+                        {/* Keyboard and touch fallback for drag-and-drop. */}
+                        <DropdownMenuItem disabled={index === 0} onClick={() => moveTo(stream.id, index - 1)}>
+                          <ArrowUp />
+                          Move earlier
+                        </DropdownMenuItem>
+                        <DropdownMenuItem disabled={index === data.streams.length - 1} onClick={() => moveTo(stream.id, index + 1)}>
+                          <ArrowDown />
+                          Move later
                         </DropdownMenuItem>
                         <DropdownMenuItem variant="destructive" onClick={() => setDeleting(stream)}>
                           <Trash2 />
