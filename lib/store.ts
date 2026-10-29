@@ -35,9 +35,10 @@ export function getServerSnapshot(): AppData | null {
 /** Fetches the latest data. Skipped while local edits are still being saved. */
 export async function reload(): Promise<void> {
   if (pending > 0) return
-  const fresh = await loadData()
+  const result = await loadData()
+  if (!result.ok) throw new Error(result.error)
   if (pending > 0) return
-  state = fresh
+  state = result.data
   emit()
 }
 
@@ -51,7 +52,10 @@ export function commitData(next: AppData): Promise<void> {
   if (!hasChanges(changes)) return Promise.resolve()
 
   pending++
-  const saved = queue.then(() => saveChanges(changes))
+  const saved = queue.then(async () => {
+    const result = await saveChanges(changes)
+    if (!result.ok) throw new Error(result.error)
+  })
   queue = saved.catch(() => undefined)
   return saved
     .catch(async (error) => {

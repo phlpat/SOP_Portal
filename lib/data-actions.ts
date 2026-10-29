@@ -6,13 +6,47 @@ import type { AppData } from './types'
 
 let client: ReturnType<typeof neon> | null = null
 
+/**
+ * Server Actions that throw have their message replaced by a digest in production, which
+ * hides the cause from the screen. So these return a result and describe the failure in
+ * words that are safe to show (never the connection string); the full error goes to the logs.
+ */
+export type ActionOutcome<T = void> = { ok: true; data: T } | { ok: false; error: string }
+
+class SafeError extends Error {}
+
 function getSql() {
   const url = process.env.DATABASE_URL
-  if (!url) throw new Error('DATABASE_URL is not set. Copy .env.example to .env.local and fill it in.')
+  if (!url) throw new SafeError('DATABASE_URL is not set for this environment. Add it in Vercel → Settings → Environment Variables.')
   return (client ??= neon(url))
 }
 
-export async function loadData(): Promise<AppData> {
+function describeError(error: unknown): string {
+  if (error instanceof SafeError) return error.message
+  const code = (error as { code?: string } | null)?.code
+  if (code === '42P01') return 'Database tables are missing. Run db/schema.sql in the Neon SQL Editor for this database.'
+  if (code === '23503') return 'Another user changed a related item. The latest data has been reloaded.'
+  if (code === '28P01' || code === '28000') return 'Database login was rejected. Check DATABASE_URL.'
+  if (error instanceof TypeError || /fetch failed|timeout|ENOTFOUND|ECONN/i.test(String((error as Error)?.message))) {
+    return 'Could not reach the database.'
+  }
+  return 'Database error. See the server logs for details.'
+}
+
+async function guarded<T>(label: string, run: () => Promise<T>): Promise<ActionOutcome<T>> {
+  try {
+    return { ok: true, data: await run() }
+  } catch (error) {
+    console.error(`[data-actions] ${label} failed:`, error)
+    return { ok: false, error: describeError(error) }
+  }
+}
+
+export async function loadData(): Promise<ActionOutcome<AppData>> {
+  return guarded('loadData', fetchAll)
+}
+
+async function fetchAll(): Promise<AppData> {
   const sql = getSql()
   const [streams, workstreams, statuses, sops] = await sql.transaction([
     sql`select id, name, description, created_at as "createdAt" from streams order by position, created_at, id`,
@@ -26,8 +60,18 @@ export async function loadData(): Promise<AppData> {
 }
 
 /** Applies a row-level diff atomically: either every change lands or none does. */
-export async function saveChanges(input: DataChanges): Promise<void> {
-  const changes = parseChanges(input)
+export async function saveChanges(input: DataChanges): Promise<ActionOutcome> {
+  let changes: DataChanges
+  try {
+    changes = parseChanges(input)
+  } catch (error) {
+    // parseChanges only throws short messages about the shape of the request, safe to show.
+    return { ok: false, error: error instanceof Error ? error.message : 'Invalid changes.' }
+  }
+  return guarded('saveChanges', () => applyChanges(changes))
+}
+
+async function applyChanges(changes: DataChanges): Promise<void> {
   const sql = getSql()
   const queries = []
 
