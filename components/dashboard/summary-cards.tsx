@@ -16,7 +16,8 @@ export function SummaryCards({ metrics }: { metrics: ProgramMetrics }) {
       {items.map((item) => (
         <Card key={item.label} className="gap-0 py-4">
           <CardContent className="flex flex-col gap-2 px-4">
-            <div className="flex items-center justify-between gap-2">
+            {/* Reserve two lines so every number sits on the same line, even when a label wraps. */}
+            <div className="flex min-h-8 items-start justify-between gap-2">
               <span className="text-xs font-medium text-muted-foreground">{item.label}</span>
               <item.icon className={`size-4 ${item.accent ?? 'text-primary'}`} aria-hidden="true" />
             </div>
