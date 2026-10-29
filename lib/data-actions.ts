@@ -2,6 +2,7 @@
 
 import { neon } from '@neondatabase/serverless'
 import { parseChanges, type DataChanges } from './changes'
+import { resolveDatabaseUrl } from './db-url'
 import type { AppData } from './types'
 
 let client: ReturnType<typeof neon> | null = null
@@ -16,8 +17,12 @@ export type ActionOutcome<T = void> = { ok: true; data: T } | { ok: false; error
 class SafeError extends Error {}
 
 function getSql() {
-  const url = process.env.DATABASE_URL
-  if (!url) throw new SafeError('DATABASE_URL is not set for this environment. Add it in Vercel → Settings → Environment Variables.')
+  const url = resolveDatabaseUrl(process.env)
+  if (!url) {
+    throw new SafeError(
+      'No database connection string found (DATABASE_URL, POSTGRES_URL or a prefixed *_DATABASE_URL). Check Vercel → Settings → Environment Variables.',
+    )
+  }
   return (client ??= neon(url))
 }
 
