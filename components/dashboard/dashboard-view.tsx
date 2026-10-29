@@ -1,11 +1,8 @@
 'use client'
 
-import Link from 'next/link'
 import { useMemo } from 'react'
-import { Plus } from 'lucide-react'
 import { useData } from '@/components/data-provider'
 import { PageHeader } from '@/components/shared/page-header'
-import { Button } from '@/components/ui/button'
 import { getProgramMetrics, getStatusDistribution } from '@/lib/metrics'
 import { SummaryCards } from './summary-cards'
 import { OverallProgress } from './overall-progress'
@@ -20,16 +17,7 @@ export function DashboardView() {
 
   return (
     <>
-      <PageHeader
-        title="Program Dashboard"
-        description="Overview of every stream. Select a stream to see its workstreams and SOPs."
-        actions={
-          <Button nativeButton={false} render={<Link href="/sops?new=1" />}>
-            <Plus data-icon="inline-start" />
-            Add SOP
-          </Button>
-        }
-      />
+      <PageHeader title="Program Dashboard" description="Overview of every stream. Select a stream to see its workstreams and SOPs." />
       <SummaryCards metrics={metrics} />
       <StreamCards />
       <div className="grid gap-6 lg:grid-cols-3">
