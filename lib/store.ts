@@ -1,40 +1,17 @@
 import type { AppData } from './types'
-import { createSampleData } from './sample-data'
+import { computeChanges, hasChanges } from './changes'
+import { loadData, saveChanges } from './data-actions'
 
-const STORAGE_KEY = 'sop-tracker:data:v1'
-
+/**
+ * Client cache of the database. Reads are served from `state`; writes update it
+ * immediately (optimistic) and are sent to the server in order. If a save fails the
+ * cache is reloaded from the server so the screen never keeps data that was not stored.
+ */
 type Listener = () => void
 const listeners = new Set<Listener>()
 let state: AppData | null = null
-
-function isAppData(value: unknown): value is AppData {
-  if (!value || typeof value !== 'object') return false
-  const v = value as Partial<AppData>
-  return Array.isArray(v.streams) && Array.isArray(v.workstreams) && Array.isArray(v.statuses) && Array.isArray(v.sops)
-}
-
-function readFromStorage(): AppData {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (raw) {
-      const parsed: unknown = JSON.parse(raw)
-      if (isAppData(parsed)) return parsed
-    }
-  } catch {
-    // Corrupt or inaccessible storage falls back to sample data below.
-  }
-  const seeded = createSampleData()
-  writeToStorage(seeded)
-  return seeded
-}
-
-function writeToStorage(data: AppData) {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
-  } catch {
-    // Quota exceeded or private mode: keep working in memory.
-  }
-}
+let pending = 0
+let queue: Promise<void> = Promise.resolve()
 
 function emit() {
   listeners.forEach((l) => l())
@@ -42,20 +19,12 @@ function emit() {
 
 export function subscribe(listener: Listener) {
   listeners.add(listener)
-  const onStorage = (e: StorageEvent) => {
-    if (e.key !== STORAGE_KEY) return
-    state = readFromStorage()
-    emit()
-  }
-  window.addEventListener('storage', onStorage)
   return () => {
     listeners.delete(listener)
-    window.removeEventListener('storage', onStorage)
   }
 }
 
-export function getSnapshot(): AppData {
-  if (!state) state = readFromStorage()
+export function getSnapshot(): AppData | null {
   return state
 }
 
@@ -63,8 +32,35 @@ export function getServerSnapshot(): AppData | null {
   return null
 }
 
-export function replaceData(next: AppData) {
-  state = next
-  writeToStorage(next)
+/** Fetches the latest data. Skipped while local edits are still being saved. */
+export async function reload(): Promise<void> {
+  if (pending > 0) return
+  const fresh = await loadData()
+  if (pending > 0) return
+  state = fresh
   emit()
+}
+
+/** Shows `next` immediately and persists the difference from the current data. */
+export function commitData(next: AppData): Promise<void> {
+  const prev = state
+  state = next
+  emit()
+  if (!prev) return Promise.resolve()
+  const changes = computeChanges(prev, next)
+  if (!hasChanges(changes)) return Promise.resolve()
+
+  pending++
+  const saved = queue.then(() => saveChanges(changes))
+  queue = saved.catch(() => undefined)
+  return saved
+    .catch(async (error) => {
+      pending--
+      await reload().catch(() => undefined)
+      throw error
+    })
+    .then(() => {
+      // Only reached on success; the catch above already decremented on failure.
+      pending--
+    })
 }

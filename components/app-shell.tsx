@@ -90,7 +90,7 @@ function AppSidebar() {
       </SidebarContent>
       <SidebarFooter>
         <p className="px-2 pb-1 text-xs leading-relaxed opacity-70 group-data-[collapsible=icon]:hidden">
-          Data is saved in this browser only.
+          Data is saved in the shared database.
         </p>
       </SidebarFooter>
     </Sidebar>
