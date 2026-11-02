@@ -148,6 +148,7 @@ export function validateSop(data: AppData, input: SopInput, id?: ID): SopFieldEr
   const code = input.code.trim()
   if (!code) errors.code = 'SOP ID is required.'
   else if (!/^[A-Za-z0-9._-]+$/.test(code)) errors.code = 'Use letters, numbers, dots, dashes or underscores only.'
+  else if (/XXX/i.test(code)) errors.code = 'Replace the XXX placeholders with the real SOP ID.'
   else if (data.sops.some((s) => s.id !== id && norm(s.code) === norm(code))) errors.code = `SOP ID "${code}" is already in use.`
   if (!input.name.trim()) errors.name = 'SOP name is required.'
   if (!input.workstreamId || !data.workstreams.some((w) => w.id === input.workstreamId)) errors.workstreamId = 'Select a workstream.'

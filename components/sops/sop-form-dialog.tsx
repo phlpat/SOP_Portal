@@ -31,15 +31,8 @@ export function SopFormDialog({ open, onOpenChange, sop, defaultStreamId }: Prop
   )
 }
 
-function suggestCode(existing: string[]) {
-  let max = 0
-  for (const code of existing) {
-    // Count both SOP_001 and the older SOP-001 so the next number never collides.
-    const m = /^SOP[-_](\d+)$/i.exec(code)
-    if (m) max = Math.max(max, Number(m[1]))
-  }
-  return `SOP_${String(max + 1).padStart(3, '0')}`
-}
+/** Template the user overwrites; validateSop refuses to save it while the XXX placeholders remain. */
+const CODE_TEMPLATE = 'SOP_XXX_XXX'
 
 function SopForm({ sop, defaultStreamId, onDone }: { sop?: Sop | null; defaultStreamId?: string; onDone: () => void }) {
   const data = useData()
@@ -49,7 +42,7 @@ function SopForm({ sop, defaultStreamId, onDone }: { sop?: Sop | null; defaultSt
 
   const [streamId, setStreamId] = useState(initialWs?.streamId ?? defaultStreamId ?? '')
   const [form, setForm] = useState<SopInput>(() => ({
-    code: sop?.code ?? suggestCode(data.sops.map((s) => s.code)),
+    code: sop?.code ?? CODE_TEMPLATE,
     name: sop?.name ?? '',
     workstreamId: sop?.workstreamId ?? '',
     owner: sop?.owner ?? '',
