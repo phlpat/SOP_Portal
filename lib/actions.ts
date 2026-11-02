@@ -1,5 +1,6 @@
 import type { ActionResult, AppData, ID, Priority, Sop, Status, StatusCategory, StatusColor } from './types'
 import { PRIORITIES } from './types'
+import { isValidDocUrl } from './doc-url'
 
 const now = () => new Date().toISOString()
 const newId = (prefix: string) => `${prefix}-${crypto.randomUUID()}`
@@ -136,6 +137,8 @@ export interface SopInput {
   priority: Priority
   targetDate: string
   description: string
+  /** Optional; empty string means no link. */
+  docUrl: string
 }
 
 export type SopFieldErrors = Partial<Record<keyof SopInput | 'streamId', string>>
@@ -153,6 +156,7 @@ export function validateSop(data: AppData, input: SopInput, id?: ID): SopFieldEr
   if (!PRIORITIES.includes(input.priority)) errors.priority = 'Select a priority.'
   if (!input.targetDate) errors.targetDate = 'Target date is required.'
   else if (!/^\d{4}-\d{2}-\d{2}$/.test(input.targetDate)) errors.targetDate = 'Invalid date.'
+  if (!isValidDocUrl(input.docUrl)) errors.docUrl = 'Enter a full link starting with https:// (or leave it empty).'
   return errors
 }
 
@@ -166,6 +170,7 @@ function cleanSop(input: SopInput) {
     priority: input.priority,
     targetDate: input.targetDate,
     description: input.description.trim(),
+    docUrl: input.docUrl.trim(),
   }
 }
 

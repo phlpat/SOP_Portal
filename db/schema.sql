@@ -44,8 +44,11 @@ create table if not exists sops (
   priority      text not null,
   target_date   text not null default '',
   description   text not null default '',
+  doc_url       text not null default '',  -- optional https link to the SOP document
   created_at    text not null,
   updated_at    text not null
 );
+-- Databases created before the document link existed get the column here (no-op otherwise).
+alter table sops add column if not exists doc_url text not null default '';
 create index if not exists sops_workstream_idx on sops (workstream_id);
 create index if not exists sops_status_idx on sops (status_id);

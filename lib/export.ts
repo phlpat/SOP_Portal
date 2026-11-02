@@ -7,9 +7,9 @@ function cell(value: string) {
 }
 
 export function sopsToCsv(rows: SopRow[]) {
-  const header = ['SOP ID', 'SOP Name', 'Stream', 'Workstream', 'PIC / Owner', 'Status', 'Priority', 'Target Date', 'Last Updated', 'Description']
+  const header = ['SOP ID', 'SOP Name', 'Stream', 'Workstream', 'PIC / Owner', 'Status', 'Priority', 'Target Date', 'Last Updated', 'Document Link', 'Description']
   const lines = rows.map((r) =>
-    [r.code, r.name, r.stream?.name ?? '', r.workstream?.name ?? '', r.owner, r.status?.name ?? '', r.priority, r.targetDate, r.updatedAt.slice(0, 10), r.description]
+    [r.code, r.name, r.stream?.name ?? '', r.workstream?.name ?? '', r.owner, r.status?.name ?? '', r.priority, r.targetDate, r.updatedAt.slice(0, 10), r.docUrl, r.description]
       .map(cell)
       .join(','),
   )

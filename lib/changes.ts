@@ -1,4 +1,5 @@
 import { PRIORITIES, STATUS_CATEGORIES, STATUS_COLORS, type AppData, type ID } from './types'
+import { isValidDocUrl } from './doc-url'
 
 /**
  * A row-level diff between two AppData snapshots. The pure actions in actions.ts
@@ -76,6 +77,7 @@ const SOP_SPEC: Spec = {
   priority: PRIORITIES,
   targetDate: 'string',
   description: 'string',
+  docUrl: 'string',
   createdAt: 'string',
   updatedAt: 'string',
 }
@@ -112,6 +114,10 @@ function parseTable<T>(input: unknown, spec: Spec, table: string): TableChanges<
   return { upsert: input.upsert.map((r) => parseRow(r, spec, table) as T), remove }
 }
 
+function checkDocUrls(rows: { docUrl: string }[]) {
+  if (rows.some((r) => !isValidDocUrl(r.docUrl))) throw new Error('Invalid document link.')
+}
+
 /** Throws on anything that does not match the expected shape; returns a cleaned copy. */
 export function parseChanges(input: unknown): DataChanges {
   if (!isRecord(input)) throw new Error('Invalid changes.')
@@ -121,6 +127,7 @@ export function parseChanges(input: unknown): DataChanges {
     statuses: parseTable(input.statuses, STATUS_SPEC, 'statuses'),
     sops: parseTable(input.sops, SOP_SPEC, 'sops'),
   }
+  checkDocUrls(changes.sops.upsert)
   if (input.streamOrder !== undefined) {
     if (!Array.isArray(input.streamOrder) || input.streamOrder.length > MAX_ROWS || input.streamOrder.some((id) => typeof id !== 'string')) {
       throw new Error('Invalid stream order.')

@@ -54,6 +54,8 @@ export interface Sop {
   priority: Priority
   targetDate: string
   description: string
+  /** Optional https link to the SOP document (for example on SharePoint). Empty when not set. */
+  docUrl: string
   createdAt: string
   updatedAt: string
 }

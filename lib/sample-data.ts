@@ -64,6 +64,7 @@ const sops: Sop[] = sopSeeds.map(([code, name, workstreamId, owner, statusId, pr
   priority,
   targetDate,
   description: '',
+  docUrl: '',
   createdAt: created,
   updatedAt: `${updated}T10:00:00.000Z`,
 }))

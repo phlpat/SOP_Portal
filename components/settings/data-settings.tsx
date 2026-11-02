@@ -20,7 +20,9 @@ function readLegacyData(): AppData | null {
     const raw = window.localStorage.getItem(LEGACY_STORAGE_KEY)
     const v = raw ? (JSON.parse(raw) as Partial<AppData>) : null
     if (v && Array.isArray(v.streams) && Array.isArray(v.workstreams) && Array.isArray(v.statuses) && Array.isArray(v.sops)) {
-      return { version: 1, streams: v.streams, workstreams: v.workstreams, statuses: v.statuses, sops: v.sops }
+      // Data saved before the document link existed has no docUrl.
+      const sops = v.sops.map((s) => ({ ...s, docUrl: s.docUrl ?? '' }))
+      return { version: 1, streams: v.streams, workstreams: v.workstreams, statuses: v.statuses, sops }
     }
   } catch {
     // Unreadable storage is treated the same as no data.

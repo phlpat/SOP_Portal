@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Download, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Download, ExternalLink, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import { useCommit, useData } from '@/components/data-provider'
 import { EmptyState, PageHeader } from '@/components/shared/page-header'
 import { PriorityBadge, StatusBadge } from '@/components/shared/badges'
@@ -234,7 +234,7 @@ export function SopsView({ openNew = false, streamId }: { openNew?: boolean; str
                 <SortHead k="priority" className="hidden sm:table-cell">Priority</SortHead>
                 <SortHead k="targetDate">Target Date</SortHead>
                 <SortHead k="updatedAt" className="hidden 2xl:table-cell">Last Updated</SortHead>
-                <TableHead className="w-24 pr-4 text-right">
+                <TableHead className="w-32 pr-4 text-right">
                   <span className="sr-only">Actions</span>
                 </TableHead>
               </TableRow>
@@ -274,6 +274,18 @@ export function SopsView({ openNew = false, streamId }: { openNew?: boolean; str
                     <TableCell className="hidden whitespace-nowrap tabular-nums text-muted-foreground 2xl:table-cell">{formatDate(r.updatedAt)}</TableCell>
                     <TableCell className="pr-4 text-right">
                       <div className="flex justify-end gap-1">
+                        {r.docUrl && (
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            nativeButton={false}
+                            aria-label={`Open document for ${r.code}`}
+                            title="Open document"
+                            render={<a href={r.docUrl} target="_blank" rel="noopener noreferrer" />}
+                          >
+                            <ExternalLink />
+                          </Button>
+                        )}
                         <Button variant="ghost" size="icon-sm" aria-label={`Edit ${r.code}`} onClick={() => openForm(r)}>
                           <Pencil />
                         </Button>

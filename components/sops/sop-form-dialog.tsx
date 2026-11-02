@@ -57,6 +57,7 @@ function SopForm({ sop, defaultStreamId, onDone }: { sop?: Sop | null; defaultSt
     priority: sop?.priority ?? 'Medium',
     targetDate: sop?.targetDate ?? '',
     description: sop?.description ?? '',
+    docUrl: sop?.docUrl ?? '',
   }))
   const [errors, setErrors] = useState<SopFieldErrors>({})
 
@@ -167,6 +168,19 @@ function SopForm({ sop, defaultStreamId, onDone }: { sop?: Sop | null; defaultSt
             aria-invalid={err('targetDate').invalid || undefined}
             aria-describedby={err('targetDate').describedBy}
             onChange={(e) => set('targetDate', e.target.value)}
+          />
+        </Field>
+        <Field label="Document link (optional)" htmlFor="sop-docurl" error={errors.docUrl} k="docUrl" className="sm:col-span-2">
+          <Input
+            id="sop-docurl"
+            type="url"
+            inputMode="url"
+            value={form.docUrl}
+            maxLength={2000}
+            aria-invalid={err('docUrl').invalid || undefined}
+            aria-describedby={err('docUrl').describedBy}
+            onChange={(e) => set('docUrl', e.target.value)}
+            placeholder="https://… (e.g. a SharePoint link to the SOP document)"
           />
         </Field>
         <Field label="Description / Notes" htmlFor="sop-desc" k="description" className="sm:col-span-2">

@@ -58,7 +58,7 @@ async function fetchAll(): Promise<AppData> {
     sql`select id, stream_id as "streamId", name, description, lead, created_at as "createdAt" from workstreams order by seq`,
     sql`select id, name, color, "order", active, category, counts_as_complete as "countsAsComplete" from statuses order by "order", id`,
     sql`select id, code, name, workstream_id as "workstreamId", owner, status_id as "statusId", priority,
-               target_date as "targetDate", description, created_at as "createdAt", updated_at as "updatedAt"
+               target_date as "targetDate", description, doc_url as "docUrl", created_at as "createdAt", updated_at as "updatedAt"
         from sops order by seq`,
   ])
   return { version: 1, streams, workstreams, statuses, sops } as unknown as AppData
@@ -110,14 +110,15 @@ async function applyChanges(changes: DataChanges): Promise<void> {
   }
   if (changes.sops.upsert.length) {
     queries.push(sql`
-      insert into sops (id, code, name, workstream_id, owner, status_id, priority, target_date, description, created_at, updated_at)
-      select r.id, r.code, r.name, r."workstreamId", r.owner, r."statusId", r.priority, r."targetDate", r.description, r."createdAt", r."updatedAt"
+      insert into sops (id, code, name, workstream_id, owner, status_id, priority, target_date, description, doc_url, created_at, updated_at)
+      select r.id, r.code, r.name, r."workstreamId", r.owner, r."statusId", r.priority, r."targetDate", r.description, r."docUrl", r."createdAt", r."updatedAt"
       from jsonb_to_recordset(${JSON.stringify(changes.sops.upsert)}::jsonb)
            as r(id text, code text, name text, "workstreamId" text, owner text, "statusId" text, priority text,
-                "targetDate" text, description text, "createdAt" text, "updatedAt" text)
+                "targetDate" text, description text, "docUrl" text, "createdAt" text, "updatedAt" text)
       on conflict (id) do update set code = excluded.code, name = excluded.name, workstream_id = excluded.workstream_id,
         owner = excluded.owner, status_id = excluded.status_id, priority = excluded.priority,
-        target_date = excluded.target_date, description = excluded.description, updated_at = excluded.updated_at`)
+        target_date = excluded.target_date, description = excluded.description, doc_url = excluded.doc_url,
+        updated_at = excluded.updated_at`)
   }
   if (changes.streamOrder?.length) {
     queries.push(sql`
