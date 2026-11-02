@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Download, ExternalLink, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Download, ExternalLink, MoreHorizontal, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import { useCommit, useData } from '@/components/data-provider'
 import { EmptyState, PageHeader } from '@/components/shared/page-header'
 import { PriorityBadge, StatusBadge } from '@/components/shared/badges'
@@ -10,6 +10,7 @@ import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { OptionSelect } from '@/components/shared/option-select'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { deleteSop } from '@/lib/actions'
@@ -308,7 +309,7 @@ export function SopsView({ openNew = false, streamId }: { openNew?: boolean; str
                   </SortHead>
                 ))}
                 {/* Pinned to the right edge so Edit and Delete stay reachable while the table scrolls sideways. */}
-                <TableHead className={`${PINNED} w-32 pr-4 text-right`}>
+                <TableHead className={`${PINNED} w-14 pr-4 text-right`}>
                   <span className="sr-only">Actions</span>
                 </TableHead>
               </TableRow>
@@ -327,26 +328,28 @@ export function SopsView({ openNew = false, streamId }: { openNew?: boolean; str
                   <TableRow key={r.id} className="group/row">
                     {visibleColumns.map((k, i) => renderCell(k, r, overdue, i === 0))}
                     <TableCell className={`${PINNED} pr-4 text-right group-hover/row:bg-[color-mix(in_oklab,var(--muted)_50%,var(--card))]`}>
-                      <div className="flex justify-end gap-1">
-                        {r.docUrl && (
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            nativeButton={false}
-                            aria-label={`Open document for ${r.code}`}
-                            title="Open document"
-                            render={<a href={r.docUrl} target="_blank" rel="noopener noreferrer" />}
-                          >
-                            <ExternalLink />
-                          </Button>
-                        )}
-                        <Button variant="ghost" size="icon-sm" aria-label={`Edit ${r.code}`} onClick={() => openForm(r)}>
-                          <Pencil />
-                        </Button>
-                        <Button variant="ghost" size="icon-sm" aria-label={`Delete ${r.code}`} onClick={() => setDeleting(r)}>
-                          <Trash2 className="text-destructive" />
-                        </Button>
-                      </div>
+                      {/* The buttons live in one menu: less width, and Delete is never one stray click away. */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label={`Actions for ${r.code}`} />}>
+                          <MoreHorizontal />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {r.docUrl && (
+                            <DropdownMenuItem onClick={() => window.open(r.docUrl, '_blank', 'noopener,noreferrer')}>
+                              <ExternalLink />
+                              Open document
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem onClick={() => openForm(r)}>
+                            <Pencil />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem variant="destructive" onClick={() => setDeleting(r)}>
+                            <Trash2 />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 )
