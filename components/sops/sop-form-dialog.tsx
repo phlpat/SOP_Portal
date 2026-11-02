@@ -32,7 +32,7 @@ export function SopFormDialog({ open, onOpenChange, sop, defaultStreamId }: Prop
 }
 
 /** Template the user overwrites; validateSop refuses to save it while the XXX placeholders remain. */
-const CODE_TEMPLATE = 'SOP_XXX_XXX'
+const CODE_TEMPLATE = 'SOP_XXXXXX_XXX'
 
 function SopForm({ sop, defaultStreamId, onDone }: { sop?: Sop | null; defaultStreamId?: string; onDone: () => void }) {
   const data = useData()
