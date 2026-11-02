@@ -2,21 +2,18 @@
 
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { Download, HardDriveDownload, RotateCcw } from 'lucide-react'
+import { Download, HardDriveDownload } from 'lucide-react'
 import { useData } from '@/components/data-provider'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { commitData } from '@/lib/store'
-import { createSampleData } from '@/lib/sample-data'
 import { downloadFile } from '@/lib/export'
 import { toDateInput } from '@/lib/metrics'
 import type { AppData } from '@/lib/types'
 
 /** Where the app kept its data before it moved to the shared database. */
 const LEGACY_STORAGE_KEY = 'sop-tracker:data:v1'
-
-type Mode = 'sample' | 'browser'
 
 function readLegacyData(): AppData | null {
   try {
@@ -31,24 +28,18 @@ function readLegacyData(): AppData | null {
   return null
 }
 
-const COPY: Record<Mode, { title: string; confirmLabel: string; success: string; replaceWith: string }> = {
-  sample: { title: 'Restore sample data?', confirmLabel: 'Restore sample data', success: 'Sample data restored.', replaceWith: 'the sample program' },
-  browser: { title: 'Import data from this browser?', confirmLabel: 'Import and replace', success: 'Data imported from this browser.', replaceWith: "the data saved in this browser's old storage" },
-}
-
 export function DataSettings() {
   const data = useData()
-  const [confirm, setConfirm] = useState<Mode | null>(null)
-  const copy = confirm ? COPY[confirm] : null
+  const [confirmImport, setConfirmImport] = useState(false)
 
-  function run(mode: Mode) {
-    const next = mode === 'sample' ? createSampleData() : readLegacyData()
+  function importFromBrowser() {
+    const next = readLegacyData()
     if (!next) {
       toast.error('No saved data found in this browser.')
       return
     }
     commitData(next).then(
-      () => toast.success(COPY[mode].success),
+      () => toast.success('Data imported from this browser.'),
       (e: unknown) => toast.error(`Not saved: ${e instanceof Error ? e.message : 'database error'}.`),
     )
   }
@@ -57,35 +48,30 @@ export function DataSettings() {
     <Card>
       <CardHeader>
         <CardTitle>Data Management</CardTitle>
-        <CardDescription>
-          Data is saved in the shared database, so changes here affect everyone. Download a backup before resetting the workspace.
-        </CardDescription>
+        <CardDescription>Data is saved in the shared database, so changes here affect everyone. Download a backup regularly.</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-wrap gap-2">
         <Button variant="outline" onClick={() => downloadFile(`sop-tracker-backup-${toDateInput(new Date())}.json`, JSON.stringify(data, null, 2), 'application/json')}>
           <Download data-icon="inline-start" />
           Download backup (JSON)
         </Button>
-        <Button variant="outline" onClick={() => setConfirm('browser')}>
+        <Button variant="outline" onClick={() => setConfirmImport(true)}>
           <HardDriveDownload data-icon="inline-start" />
           Import from this browser
         </Button>
-        <Button variant="outline" onClick={() => setConfirm('sample')}>
-          <RotateCcw data-icon="inline-start" />
-          Restore sample data
-        </Button>
       </CardContent>
       <ConfirmDialog
-        open={!!confirm}
-        onOpenChange={(o) => !o && setConfirm(null)}
-        title={copy?.title ?? ''}
-        confirmLabel={copy?.confirmLabel ?? ''}
+        open={confirmImport}
+        onOpenChange={setConfirmImport}
+        title="Import data from this browser?"
+        confirmLabel="Import and replace"
         description={
           <p>
-            All current streams, workstreams and SOPs in the shared database will be replaced with {copy?.replaceWith}. This affects everyone using the portal and cannot be undone.
+            All current streams, workstreams and SOPs in the shared database will be replaced with the data saved in this browser&apos;s old storage. This affects
+            everyone using the portal and cannot be undone.
           </p>
         }
-        onConfirm={() => confirm && run(confirm)}
+        onConfirm={importFromBrowser}
       />
     </Card>
   )
