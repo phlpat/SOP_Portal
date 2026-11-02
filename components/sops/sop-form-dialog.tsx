@@ -34,10 +34,11 @@ export function SopFormDialog({ open, onOpenChange, sop, defaultStreamId }: Prop
 function suggestCode(existing: string[]) {
   let max = 0
   for (const code of existing) {
-    const m = /^SOP-(\d+)$/i.exec(code)
+    // Count both SOP_001 and the older SOP-001 so the next number never collides.
+    const m = /^SOP[-_](\d+)$/i.exec(code)
     if (m) max = Math.max(max, Number(m[1]))
   }
-  return `SOP-${String(max + 1).padStart(3, '0')}`
+  return `SOP_${String(max + 1).padStart(3, '0')}`
 }
 
 function SopForm({ sop, defaultStreamId, onDone }: { sop?: Sop | null; defaultStreamId?: string; onDone: () => void }) {
