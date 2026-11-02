@@ -61,6 +61,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   return <DataContext.Provider value={data}>{children}</DataContext.Provider>
 }
 
+/** Shows part of the data to everything below it, so existing widgets can be filtered without changes. */
+export function ScopedData({ data, children }: { data: AppData; children: React.ReactNode }) {
+  return <DataContext.Provider value={data}>{children}</DataContext.Provider>
+}
+
 export function useData(): AppData {
   const data = useContext(DataContext)
   if (!data) throw new Error('useData must be used inside <DataProvider>')
