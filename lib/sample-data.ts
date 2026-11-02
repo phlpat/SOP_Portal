@@ -7,8 +7,9 @@ export const DEFAULT_STATUSES: Status[] = [
   { id: 'st-in-progress', name: 'In Progress', color: 'blue', order: 1, active: true, category: 'in_progress', countsAsComplete: false },
   { id: 'st-pending-review', name: 'Pending Review', color: 'amber', order: 2, active: true, category: 'pending', countsAsComplete: false },
   { id: 'st-pending-signoff', name: 'Pending Sign-off', color: 'violet', order: 3, active: true, category: 'pending', countsAsComplete: false },
-  { id: 'st-completed', name: 'Completed', color: 'emerald', order: 4, active: true, category: 'in_progress', countsAsComplete: true },
-  { id: 'st-on-hold', name: 'On Hold', color: 'rose', order: 5, active: true, category: 'on_hold', countsAsComplete: false },
+  { id: 'st-completed', name: 'Completed - Not Yet Announced', color: 'indigo', order: 4, active: true, category: 'in_progress', countsAsComplete: true },
+  { id: 'st-completed-announced', name: 'Completed & Announced', color: 'emerald', order: 5, active: true, category: 'in_progress', countsAsComplete: true },
+  { id: 'st-on-hold', name: 'On Hold', color: 'rose', order: 6, active: true, category: 'on_hold', countsAsComplete: false },
 ]
 
 const streams: Stream[] = [

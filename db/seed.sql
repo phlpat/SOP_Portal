@@ -13,8 +13,9 @@ insert into statuses (id, name, color, "order", active, category, counts_as_comp
   ('st-in-progress', 'In Progress', 'blue', 1, true, 'in_progress', false),
   ('st-pending-review', 'Pending Review', 'amber', 2, true, 'pending', false),
   ('st-pending-signoff', 'Pending Sign-off', 'violet', 3, true, 'pending', false),
-  ('st-completed', 'Completed', 'emerald', 4, true, 'in_progress', true),
-  ('st-on-hold', 'On Hold', 'rose', 5, true, 'on_hold', false)
+  ('st-completed', 'Completed - Not Yet Announced', 'indigo', 4, true, 'in_progress', true),
+  ('st-completed-announced', 'Completed & Announced', 'emerald', 5, true, 'in_progress', true),
+  ('st-on-hold', 'On Hold', 'rose', 6, true, 'on_hold', false)
 on conflict (id) do nothing;
 
 insert into workstreams (id, stream_id, name, description, lead, created_at) values
