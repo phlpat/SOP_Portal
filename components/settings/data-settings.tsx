@@ -2,13 +2,13 @@
 
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { Download, HardDriveDownload, RotateCcw, Trash2 } from 'lucide-react'
+import { Download, HardDriveDownload, RotateCcw } from 'lucide-react'
 import { useData } from '@/components/data-provider'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { commitData } from '@/lib/store'
-import { createEmptyData, createSampleData } from '@/lib/sample-data'
+import { createSampleData } from '@/lib/sample-data'
 import { downloadFile } from '@/lib/export'
 import { toDateInput } from '@/lib/metrics'
 import type { AppData } from '@/lib/types'
@@ -16,7 +16,7 @@ import type { AppData } from '@/lib/types'
 /** Where the app kept its data before it moved to the shared database. */
 const LEGACY_STORAGE_KEY = 'sop-tracker:data:v1'
 
-type Mode = 'sample' | 'empty' | 'browser'
+type Mode = 'sample' | 'browser'
 
 function readLegacyData(): AppData | null {
   try {
@@ -33,7 +33,6 @@ function readLegacyData(): AppData | null {
 
 const COPY: Record<Mode, { title: string; confirmLabel: string; success: string; replaceWith: string }> = {
   sample: { title: 'Restore sample data?', confirmLabel: 'Restore sample data', success: 'Sample data restored.', replaceWith: 'the sample program' },
-  empty: { title: 'Clear all data?', confirmLabel: 'Clear everything', success: 'Workspace cleared.', replaceWith: 'an empty workspace (default statuses are kept)' },
   browser: { title: 'Import data from this browser?', confirmLabel: 'Import and replace', success: 'Data imported from this browser.', replaceWith: "the data saved in this browser's old storage" },
 }
 
@@ -43,7 +42,7 @@ export function DataSettings() {
   const copy = confirm ? COPY[confirm] : null
 
   function run(mode: Mode) {
-    const next = mode === 'sample' ? createSampleData() : mode === 'empty' ? createEmptyData() : readLegacyData()
+    const next = mode === 'sample' ? createSampleData() : readLegacyData()
     if (!next) {
       toast.error('No saved data found in this browser.')
       return
@@ -74,10 +73,6 @@ export function DataSettings() {
         <Button variant="outline" onClick={() => setConfirm('sample')}>
           <RotateCcw data-icon="inline-start" />
           Restore sample data
-        </Button>
-        <Button variant="outline" className="text-destructive" onClick={() => setConfirm('empty')}>
-          <Trash2 data-icon="inline-start" />
-          Clear all data
         </Button>
       </CardContent>
       <ConfirmDialog
