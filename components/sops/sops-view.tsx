@@ -17,8 +17,12 @@ import { buildSopRows, formatDate, sortedStatuses, toDateInput, type SopRow } fr
 import { downloadFile, sopsToCsv } from '@/lib/export'
 import { PRIORITIES, type Sop } from '@/lib/types'
 import { SopFormDialog } from './sop-form-dialog'
+import { ColumnsMenu } from './sop-columns-menu'
+import { COLUMN_KEYS, COLUMN_LABELS, useColumnConfig, type ColumnKey } from './sop-columns'
 
 const ALL = 'all'
+// Sticky to the right edge of the scrolling table, with a soft edge so it reads as a separate layer.
+const PINNED = 'sticky right-0 z-10 bg-card shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.15)]'
 const PAGE_SIZE = 10
 const PRIORITY_RANK = Object.fromEntries(PRIORITIES.map((p, i) => [p, i]))
 
@@ -44,6 +48,13 @@ export function SopsView({ openNew = false, streamId }: { openNew?: boolean; str
   const statuses = useMemo(() => sortedStatuses(data), [data])
   const allRows = useMemo(() => buildSopRows(data).filter((r) => !streamId || r.stream?.id === streamId), [data, streamId])
   const scopedWorkstreams = streamId ? data.workstreams.filter((w) => w.streamId === streamId) : data.workstreams
+
+  const [columnConfig, setColumnConfig] = useColumnConfig()
+  // Stream is redundant on a stream page, so it is never offered there.
+  const availableColumns = COLUMN_KEYS.filter((k) => !(streamId && k === 'stream'))
+  const shownColumns = columnConfig.order.filter((k) => availableColumns.includes(k) && !columnConfig.hidden.includes(k))
+  // If everything offered here was hidden on another page, fall back to all of it rather than an empty table.
+  const visibleColumns = shownColumns.length > 0 ? shownColumns : availableColumns
 
   const [query, setQuery] = useState('')
   const [streamF, setStreamF] = useState(ALL)
@@ -111,6 +122,71 @@ export function SopsView({ openNew = false, streamId }: { openNew?: boolean; str
     downloadFile(`sops-${today}.csv`, sopsToCsv(filtered), 'text/csv;charset=utf-8')
   }
 
+  function renderCell(k: ColumnKey, r: SopRow, overdue: boolean, first: boolean) {
+    const pad = first ? 'pl-4 ' : ''
+    switch (k) {
+      case 'code':
+        return (
+          <TableCell key={k} className={`${pad}font-mono text-xs`}>
+            {r.code}
+          </TableCell>
+        )
+      case 'name':
+        return (
+          <TableCell key={k} className={pad || undefined}>
+            <span className="block max-w-64 truncate font-medium" title={r.name}>
+              {r.name}
+            </span>
+            {/* Keeps the context visible when the Workstream column is switched off. */}
+            {!visibleColumns.includes('workstream') && <span className="block max-w-64 truncate text-xs text-muted-foreground">{r.workstream?.name}</span>}
+          </TableCell>
+        )
+      case 'stream':
+        return (
+          <TableCell key={k} className={`${pad}text-muted-foreground`}>
+            {r.stream?.name}
+          </TableCell>
+        )
+      case 'workstream':
+        return (
+          <TableCell key={k} className={`${pad}text-muted-foreground`}>
+            {r.workstream?.name}
+          </TableCell>
+        )
+      case 'owner':
+        return (
+          <TableCell key={k} className={pad || undefined}>
+            {r.owner}
+          </TableCell>
+        )
+      case 'status':
+        return (
+          <TableCell key={k} className={pad || undefined}>
+            <StatusBadge status={r.status} />
+          </TableCell>
+        )
+      case 'priority':
+        return (
+          <TableCell key={k} className={pad || undefined}>
+            <PriorityBadge priority={r.priority} />
+          </TableCell>
+        )
+      case 'targetDate':
+        return (
+          <TableCell key={k} className={`${pad}whitespace-nowrap tabular-nums ${overdue ? 'font-medium text-red-600' : ''}`}>
+            {formatDate(r.targetDate)}
+            {overdue && <span className="sr-only"> (overdue)</span>}
+          </TableCell>
+        )
+      case 'updatedAt':
+        return (
+          <TableCell key={k} className={`${pad}whitespace-nowrap tabular-nums text-muted-foreground`}>
+            {formatDate(r.updatedAt)}
+          </TableCell>
+        )
+    }
+  }
+
   const SortHead = ({ k, children, className }: { k: SortKey; children: React.ReactNode; className?: string }) => {
     const active = sort.key === k
     const Icon = !active ? ArrowUpDown : sort.dir === 1 ? ArrowUp : ArrowDown
@@ -129,6 +205,7 @@ export function SopsView({ openNew = false, streamId }: { openNew?: boolean; str
       {(() => {
         const actions = (
           <>
+            <ColumnsMenu config={columnConfig} onChange={setColumnConfig} available={availableColumns} />
             <Button variant="outline" onClick={exportCsv} disabled={filtered.length === 0}>
               <Download data-icon="inline-start" />
               Export CSV
@@ -225,16 +302,13 @@ export function SopsView({ openNew = false, streamId }: { openNew?: boolean; str
           <Table>
             <TableHeader>
               <TableRow>
-                <SortHead k="code" className="pl-4">SOP ID</SortHead>
-                <SortHead k="name">SOP Name</SortHead>
-                {!streamId && <SortHead k="stream" className="hidden xl:table-cell">Stream</SortHead>}
-                <SortHead k="workstream" className="hidden lg:table-cell">Workstream</SortHead>
-                <SortHead k="owner" className="hidden md:table-cell">PIC / Owner</SortHead>
-                <SortHead k="status">Status</SortHead>
-                <SortHead k="priority" className="hidden sm:table-cell">Priority</SortHead>
-                <SortHead k="targetDate">Target Date</SortHead>
-                <SortHead k="updatedAt" className="hidden 2xl:table-cell">Last Updated</SortHead>
-                <TableHead className="w-32 pr-4 text-right">
+                {visibleColumns.map((k, i) => (
+                  <SortHead key={k} k={k} className={i === 0 ? 'pl-4' : undefined}>
+                    {COLUMN_LABELS[k]}
+                  </SortHead>
+                ))}
+                {/* Pinned to the right edge so Edit and Delete stay reachable while the table scrolls sideways. */}
+                <TableHead className={`${PINNED} w-32 pr-4 text-right`}>
                   <span className="sr-only">Actions</span>
                 </TableHead>
               </TableRow>
@@ -242,7 +316,7 @@ export function SopsView({ openNew = false, streamId }: { openNew?: boolean; str
             <TableBody>
               {pageRows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={10} className="py-10 text-center text-muted-foreground">
+                  <TableCell colSpan={visibleColumns.length + 1} className="py-10 text-center text-muted-foreground">
                     {allRows.length === 0 ? 'No SOPs yet. Click “Add SOP” to create the first one.' : 'No SOPs match your filters.'}
                   </TableCell>
                 </TableRow>
@@ -250,29 +324,9 @@ export function SopsView({ openNew = false, streamId }: { openNew?: boolean; str
               {pageRows.map((r) => {
                 const overdue = !r.status?.countsAsComplete && r.targetDate < today
                 return (
-                  <TableRow key={r.id}>
-                    <TableCell className="pl-4 font-mono text-xs">{r.code}</TableCell>
-                    <TableCell>
-                      <span className="block max-w-64 truncate font-medium" title={r.name}>
-                        {r.name}
-                      </span>
-                      <span className="block max-w-64 truncate text-xs text-muted-foreground lg:hidden">{r.workstream?.name}</span>
-                    </TableCell>
-                    {!streamId && <TableCell className="hidden text-muted-foreground xl:table-cell">{r.stream?.name}</TableCell>}
-                    <TableCell className="hidden text-muted-foreground lg:table-cell">{r.workstream?.name}</TableCell>
-                    <TableCell className="hidden md:table-cell">{r.owner}</TableCell>
-                    <TableCell>
-                      <StatusBadge status={r.status} />
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      <PriorityBadge priority={r.priority} />
-                    </TableCell>
-                    <TableCell className={`whitespace-nowrap tabular-nums ${overdue ? 'font-medium text-red-600' : ''}`}>
-                      {formatDate(r.targetDate)}
-                      {overdue && <span className="sr-only"> (overdue)</span>}
-                    </TableCell>
-                    <TableCell className="hidden whitespace-nowrap tabular-nums text-muted-foreground 2xl:table-cell">{formatDate(r.updatedAt)}</TableCell>
-                    <TableCell className="pr-4 text-right">
+                  <TableRow key={r.id} className="group/row">
+                    {visibleColumns.map((k, i) => renderCell(k, r, overdue, i === 0))}
+                    <TableCell className={`${PINNED} pr-4 text-right group-hover/row:bg-[color-mix(in_oklab,var(--muted)_50%,var(--card))]`}>
                       <div className="flex justify-end gap-1">
                         {r.docUrl && (
                           <Button
